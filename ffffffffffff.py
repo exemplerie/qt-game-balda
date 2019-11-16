@@ -12,47 +12,46 @@ ALPHABIT = list('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭ�
 STATUSES = {0: 'Выберите букву и вставьте ее \nв свободную клетку.',
             1: 'Покажите слово от первой \nдо последней буквы. Для отмены \nнажмите правой кнопкой мыши.',
             2: 'Конец игры.'}
-PLAYERS = ['player1', 'player2']
 
 
-class Cell_class(QWidget):
+class Cell_class(QWidget):                  # класс для клеток с буквами
     def __init__(self, x, y, f):
         super(Cell_class, self).__init__()
 
         self.setFixedSize(QSize(500 // f, 500 // f))
 
-        self.is_filled = False
-        self.move_fill = False
-        self.is_letter = False
-        self.letter = None
+        self.is_filled = False                  # закрашена (выбрана)
+        self.move_fill = False                  # закрашена из-за наведения мышкой
+        self.is_letter = False                  # есть ли буква внутри
+        self.letter = None                      # какая буква
 
-        self.x = x
+        self.x = x                              # координаты на сетке клеток (класс Field)
         self.y = y
 
-    def set_letter(self, letter):
+    def set_letter(self, letter):                   # для установки буквы в клетку
         if not self.is_letter and letter:
             self.is_letter = True
             self.letter = letter
             self.update()
 
-    def reset(self):
+    def reset(self):                            # приводит к первоначальному (стандартному) виду
         self.is_filled = False
         self.letter = None
         self.is_letter = False
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event):                # функция отрисовки клетки
         qp = QPainter(self)
         qp.setRenderHint(QPainter.Antialiasing)
         colors = [QColor('#faf694'), QColor('#f7d15f')]
 
         r = event.rect()
 
-        if self.is_filled or self.move_fill:
+        if self.is_filled or self.move_fill:        # закрашивается при наведении или выделении (нажатии)
             color = colors[window.current_player]
             outer, inner = Qt.black, color
         else:
-            outer, inner = Qt.black, QColor('#D7D7D7')
+            outer, inner = Qt.black, QColor('#FAF6EA')
 
         qp.fillRect(r, QBrush(inner))
         pen = QPen(outer)
@@ -60,20 +59,20 @@ class Cell_class(QWidget):
         qp.setPen(pen)
         qp.drawRect(r)
 
-        if self.is_letter:
+        if self.is_letter:                  # вставить букву
             qp.setPen(Qt.black)
             qp.setFont(QFont("Arial", 30))
             qp.drawText(r, Qt.AlignCenter, self.letter)
 
-    def enterEvent(self, e):
+    def enterEvent(self, e):                # наведение мышкой в область клетки (для закрашивания)
         self.move_fill = True
         self.update()
 
-    def leaveEvent(self, e):
+    def leaveEvent(self, e):                # выход мышки из области клетки
         self.move_fill = False
         window.update()
 
-    def highlighting(self):
+    def highlighting(self):                 # проверяет, можно ли выбрать клетку (если есть буква и она рядом с другими выделенными)
         if self.is_letter:
             if len(window.current_word) > 0:
                 comp_cell = window.current_word[len(window.current_word) - 1]
@@ -82,47 +81,48 @@ class Cell_class(QWidget):
                     window.current_word.append(self)
                     self.is_filled = True
             else:
-                window.current_word.append(self)
+                window.current_word.append(self)        # добавляет букву в конец вводимого слова
                 self.is_filled = True
             self.update()
 
-    def mousePressEvent(self, e):
-        if (e.button() == Qt.LeftButton) and window.game_status == STATUSES[0]:
+    def mousePressEvent(self, e):           # варианты при нажатии
+        if (e.button() == Qt.LeftButton) and window.game_status == STATUSES[0]:     # вставление буквы
             if not self.is_letter and window.remembered_alphabit_letter and window.field.check_heighbor_cells(self):
-                self.set_letter(window.remembered_alphabit_letter)
+                self.set_letter(window.remembered_alphabit_letter)      # вставляет выбранную из алфавита букву
                 window.field.last_letter = self
                 self.update()
                 window.game_status = STATUSES[1]
                 window.set_guide()
         elif window.game_status == STATUSES[1]:
-            if (e.button() == Qt.LeftButton):
+            if (e.button() == Qt.LeftButton):           # выделение клетки (добавление буквы к текущему слову)
                 self.highlighting()
-            if (e.button() == Qt.RightButton):
+            if (e.button() == Qt.RightButton):          # удаление клетки из текущего слова
                 if self.is_filled and self == window.current_word[len(window.current_word) - 1]:
                     window.current_word = window.current_word[:len(window.current_word) - 1]
                     self.is_filled = False
                     self.update()
-                if not window.current_word and self == window.field.last_letter:
+                if not window.current_word and self == window.field.last_letter:        # удаление буквы из клетки
                     window.delete_letter()
 
         window.set_guide()
 
 
-class Field(QWidget):
+class Field(QWidget):               # класс игрового поля
     def __init__(self, word, field):
         super(Field, self).__init__()
-        self.f_size = field
-        self.word = word
+        self.f_size = field             # размер (сколько на сколько ячеек)
+        self.word = word                # изначальное слово (по середине)
         self.grid = QGridLayout()
         self.grid.setSpacing(0)
         self.setLayout(self.grid)
         self.grid.setHorizontalSpacing(0)
-        self.orig_cells_objects = [[None for j in range(self.f_size)] for i in range(self.f_size)]
+        self.orig_cells_objects = [[None for j in range(self.f_size)] for i in range(self.f_size)]      # массив клеток
         self.last_letter = None
         self.init_map()
-        self.cells_objects = copy.copy(self.orig_cells_objects)
+        self.cells_objects = copy.copy(self.orig_cells_objects)         # промежуточный массив клеток
+        self.setMaximumSize(500, 500)
 
-    def init_map(self):
+    def init_map(self):                         # создание поля
         for x in range(0, self.f_size):
             for y in range(0, self.f_size):
                 a = Cell_class(x, y, self.f_size)
@@ -131,12 +131,12 @@ class Field(QWidget):
                 self.grid.addWidget(a, x, y)
                 self.orig_cells_objects[x][y] = a
 
-    def reset_map(self):
+    def reset_map(self):                        # сброс поля
         for x in range(0, self.f_size):
             for y in range(0, self.f_size):
                 self.cells_objects[x][y].is_filled = False
 
-    def check_heighbor_cells(self, cell):
+    def check_heighbor_cells(self, cell):       # проверяет, есть ли рядом с выбранной клеткой другие с буквами
         if cell.x > 0:
             if self.cells_objects[cell.x - 1][cell.y].is_letter:
                 return True
@@ -155,30 +155,31 @@ class Field(QWidget):
 class MainWindow(QWidget):
     def __init__(self, field=5, name1='player1', name2='player2'):
         super(MainWindow, self).__init__()
-        self.field_size = field
-        self.players = [name1, name2]
-        self.remembered_alphabit_letter = None
-        self.current_word = []
-        self.game_status = STATUSES[0]
-        self.current_player = 0
-        self.p_counts = [0, 0]
-        self.p_words = {0: [], 1: []}
+        self.field_size = field             # размер поля
+        self.players = [name1, name2]           # имена игроков
+        self.remembered_alphabit_letter = None          # последняя выбранная из алфавита буква
+        self.current_word = []              # текущее набираемое слово
+        self.game_status = STATUSES[0]          # текущий статус игры
+        self.current_player = 0                 # чей ход
+        self.p_counts = [0, 0]                  # счет игры
+        self.p_words = {0: [], 1: []}           # все веденные слова
 
-        self.field = Field(self.generate_word(), self.field_size)
+        self.field = Field(self.generate_word(), self.field_size)       # создание поля
         self.setGeometry(100, 100, 900, 700)
 
-        self.table = QTableWidget(self)
+        self.table = QTableWidget(self)     # таблица веденных слов
         self.table.setColumnCount(2)
-        self.table.setMaximumSize(500, 250)
+        self.table.setMaximumSize(self.width() // 2, 250)
         self.table.setHorizontalHeaderLabels(self.players)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
 
-        self.word_description = QPlainTextEdit(self)
+        self.word_description = QPlainTextEdit(self)        # определение слова из словаря
         self.word_description.setReadOnly(True)
+        self.word_description.setMaximumSize(self.width() // 2, 250)
 
-        self.counts = QLabel(self)
+        self.counts = QLabel(self)          # счет
         self.counts.setText(str(self.p_counts[0]) + ' : ' + str(self.p_counts[1]))
         self.counts.setMaximumSize(130, 100)
         font2 = QtGui.QFont()
@@ -186,50 +187,49 @@ class MainWindow(QWidget):
         font2.setPointSize(30)
         self.counts.setFont(font2)
 
-        self.guide_label = QLabel()
+        self.guide_label = QLabel()     # надпись-руководство (какой сейчас момент игры: ввод, смена хода и т.д.)
         font = QtGui.QFont()
         font.setFamily('Tw Cen MT')
         font.setPointSize(12)
         self.guide_label.setFont(font)
-        self.now_move = QLabel(self)
+        self.now_move = QLabel(self)            # надпись, кто сейчас ходит
         self.now_move.setText('Сейчас ход: ' + self.players[self.current_player])
         font3 = font2
         font3.setPointSize(20)
         self.now_move.setFont(font3)
 
-        self.delete_letter_btn = QPushButton(self)
+        self.delete_letter_btn = QPushButton(self)      # кнопка - удаление буквы
         self.delete_letter_btn.setText('Удалить букву')
         self.delete_letter_btn.setMinimumSize(100, 50)
         self.delete_letter_btn.setEnabled(False)
         self.delete_letter_btn.clicked.connect(self.delete_letter)
-        self.delete_word_btn = QPushButton(self)
+        self.delete_word_btn = QPushButton(self)            # кнопка - удаление слова
         self.delete_word_btn.setText('Удалить слово')
         self.delete_word_btn.setMinimumSize(100, 50)
         self.delete_word_btn.setEnabled(False)
         self.delete_word_btn.clicked.connect(self.delete_word)
-        self.add_word_btn = QPushButton(self)
+        self.add_word_btn = QPushButton(self)           # кнопка - добавление слова
         self.add_word_btn.setMinimumSize(100, 50)
         self.add_word_btn.clicked.connect(self.make_a_move)
-        self.pass_move_btn = QPushButton()
+        self.pass_move_btn = QPushButton()              # кнопка - пропуск хода
         self.pass_move_btn.setText('Пропустить ход')
         self.pass_move_btn.setMinimumSize(100, 50)
         self.pass_move_btn.clicked.connect(self.pass_move)
-        self.new_game_btn = QPushButton(self)
+        self.new_game_btn = QPushButton(self)           # кнопка - новая игра (при окончании предыдущей)
         self.new_game_btn.setText('Начать заново')
         self.new_game_btn.setMinimumSize(100, 50)
         self.new_game_btn.clicked.connect(self.close)
         self.new_game_btn.hide()
 
-        self.main_vb = QVBoxLayout(self)
+        self.main_vb = QVBoxLayout(self)            # блоки для отображения виджетов
         self.upper_hb = QHBoxLayout(self)
         self.table_vb = QVBoxLayout(self)
         self.btn_vb = QVBoxLayout(self)
-        self.btn_vb.setGeometry(QRect(0, 0, 0, 0))
         self.game_field_vb = QVBoxLayout(self)
         self.count_hb = QHBoxLayout(self)
         self.count_hb.addWidget(self.counts)
 
-        self.main_vb.addLayout(self.upper_hb)
+        self.main_vb.addLayout(self.upper_hb)               # собираем все
         self.upper_hb.addLayout(self.game_field_vb)
         self.game_field_vb.addStretch(1)
         self.game_field_vb.addWidget(self.field)
@@ -249,18 +249,11 @@ class MainWindow(QWidget):
 
         self.setLayout(self.main_vb)
 
-        self.init_alphabit()
-        self.set_guide()
-        self.game_over()
+        self.init_alphabit()            # создание алфавита
+        self.set_guide()                # ставим надпись-руководство
         self.setFont(font)
 
-    def reset_map(self):
-        for x in range(0, self.field_size):
-            for y in range(0, self.field_size):
-                w = self.grid.itemAtPosition(y, x).widget()
-                w.reset()
-
-    def init_alphabit(self):
+    def init_alphabit(self):            # алфавит
         a = QWidget(self)
         a.grid = QGridLayout(self)
         a.grid.setSpacing(0)
@@ -274,53 +267,53 @@ class MainWindow(QWidget):
                 font.setPointSize(20)
                 font.setWeight(50)
                 new.setFont(font)
-                new.clicked.connect(self.alphabit_letter_is_pressed)
+                new.clicked.connect(self.alphabit_letter_is_pressed)        # соединяем с нажатием
                 a.grid.addWidget(new, x, y)
         self.main_vb.addWidget(a)
 
-    def generate_word(self):
+    def alphabit_letter_is_pressed(self):
+        self.remembered_alphabit_letter = self.sender().text()          # запоминаем последнюю введенную букву
+
+    def generate_word(self):                # с помощью словаря-базы данных выбираем случайное слово для начала игры
         global cur
         result = cur.execute("""SELECT * FROM words WHERE LENGTH(word)=""" + str(self.field_size)).fetchall()
         self.first_word = random.choice(result)[1]
         return self.first_word
 
-    def alphabit_letter_is_pressed(self):
-        self.remembered_alphabit_letter = self.sender().text()
-
-    def set_guide(self):
+    def set_guide(self):            # устанавливает надпись-руководство и меняет кнопки при изменении статуса игры
         self.guide_label.setText(self.game_status)
         if self.game_status == STATUSES[0] or self.game_status == STATUSES[1]:
-            self.add_word_btn.hide()
+            self.add_word_btn.hide()        # прячем "ввести слово", если еще не выделена буква
         if self.game_status == STATUSES[1]:
-            self.delete_letter_btn.setEnabled(True)
+            self.delete_letter_btn.setEnabled(True)     # доступ к кнопке - удалению буквы
             if self.current_word:
-                self.add_word_btn.show()
+                self.add_word_btn.show()        # показываем "ввести слово", если выделена хоть одна буква
                 self.add_word_btn.setText(''.join([x.letter for x in self.current_word]))
-                self.delete_word_btn.setEnabled(True)
+                self.delete_word_btn.setEnabled(True)       # доступ к кнопке - удалению слова
 
-    def make_a_move(self):
+    def make_a_move(self):          # проверяет и делает ход
         if self.game_status == STATUSES[1]:
-            word = ''.join(j.letter for j in self.current_word)
-            if self.check_word(word) and self.field.last_letter in self.current_word:
-                self.p_counts[self.current_player] += len(word)
-                self.p_words[self.current_player].append(word)
-                self.set_description(word.lower())
-                self.player_change()
-                self.game_over()
+            word = ''.join(j.letter for j in self.current_word)         # введенное слово
+            if self.check_word(word) and self.field.last_letter in self.current_word:       # если прошло проверку
+                self.p_counts[self.current_player] += len(word)         # обновление счета
+                self.p_words[self.current_player].append(word)          # списка слов
+                self.set_description(word.lower())                  # значение последнего слова
+                self.player_change()                # меняем игрока
+                self.game_over()                # проверка на окончание игры
             else:
-                self.guide_label.setText('Подумайте еще раз!')
+                self.guide_label.setText('Подумайте еще раз!')          # слово не прошло проверку
                 self.guide_label.update()
                 self.delete_word()
 
-    def check_word(self, word):
+    def check_word(self, word):             # проверка слова
         global cur
         result = cur.execute("""SELECT * FROM words
-                    WHERE word = ?""", (word,)).fetchone()
+                    WHERE word = ?""", (word,)).fetchone()          # поиск слова в морфологическом словаре
         global cur2
         result_2 = cur2.execute("""SELECT * FROM ozhigov
-                    WHERE word = ?""", (word.lower(),)).fetchone()
+                    WHERE word = ?""", (word.lower(),)).fetchone()      # поиск слова в толковом словаре
         if (result or result_2) and word not in self.p_words[0] and word not in self.p_words[
-            1] and word != self.first_word:
+            1] and word != self.first_word:         # нет ли слова в уже введенных
             return True
         return False
 
