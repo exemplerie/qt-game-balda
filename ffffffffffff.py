@@ -5,27 +5,23 @@ from PyQt5 import QtGui
 
 import sqlite3
 import copy
-import pymorphy2
 import random
 import sys
 
 ALPHABIT = list('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ')
 STATUSES = {0: 'Выберите букву и вставьте ее \nв свободную клетку.', 1: 'Покажите слово от первой \nдо последней буквы.',
             2: 'Конец игры.'}
-MORPH = pymorphy2.MorphAnalyzer()
 PLAYERS = ['player1', 'player2']
 
 
-class Pos(QWidget):
+class Cell_class(QWidget):
     def __init__(self, x, y, f):
-        super(Pos, self).__init__()
-
-        self.setMouseTracking(True)
+        super(Cell_class, self).__init__()
 
         self.setFixedSize(QSize(500 // f, 500 // f))
 
         self.is_filled = False
-        self.prom_fill = False
+        self.move_fill = False
         self.is_letter = False
         self.letter = None
 
@@ -33,11 +29,10 @@ class Pos(QWidget):
         self.y = y
 
     def set_letter(self, letter):
-        if not self.is_letter:
-            if letter:
-                self.is_letter = True
-                self.letter = letter
-                self.update()
+        if not self.is_letter and letter:
+            self.is_letter = True
+            self.letter = letter
+            self.update()
 
     def reset(self):
         self.is_filled = False
@@ -52,7 +47,7 @@ class Pos(QWidget):
 
         r = event.rect()
 
-        if self.is_filled or self.prom_fill:
+        if self.is_filled or self.move_fill:
             color = colors[window.current_player]
             outer, inner = Qt.black, color
         else:
@@ -70,11 +65,11 @@ class Pos(QWidget):
             qp.drawText(r, Qt.AlignCenter, self.letter)
 
     def enterEvent(self, e):
-        self.prom_fill = True
+        self.move_fill = True
         self.update()
 
     def leaveEvent(self, e):
-        self.prom_fill = False
+        self.move_fill = False
         window.update()
 
     def highlighting(self):
@@ -89,12 +84,8 @@ class Pos(QWidget):
                 window.current_word.append(self)
                 self.is_filled = True
             self.update()
-        print([j.letter for j in window.current_word])
-
-
 
     def mousePressEvent(self, e):
-        print(window.game_status)
         if (e.button() == Qt.LeftButton) and window.game_status == STATUSES[0]:
             if not self.is_letter and window.remembered_alphabit_letter and window.field.check_heighbor_cells(self):
                 self.set_letter(window.remembered_alphabit_letter)
@@ -111,8 +102,6 @@ class Field(QWidget):
     def __init__(self, word, field):
         super(Field, self).__init__()
         self.f_size = field
-        print(self.f_size)
-        self.setMouseTracking(True)
         self.word = word
         self.grid = QGridLayout()
         self.grid.setSpacing(0)
@@ -126,7 +115,7 @@ class Field(QWidget):
     def init_map(self):
         for x in range(0, self.f_size):
             for y in range(0, self.f_size):
-                a = Pos(x, y, self.f_size)
+                a = Cell_class(x, y, self.f_size)
                 if x == self.f_size // 2:
                     a.set_letter(self.word[y])
                 self.grid.addWidget(a, x, y)
@@ -154,20 +143,16 @@ class Field(QWidget):
 
 
 class MainWindow(QWidget):
-    def __init__(self, *args):
+    def __init__(self, field=5, name1='player1', name2='player2'):
         super(MainWindow, self).__init__()
-        self.field_size = 5
-        if args:
-            self.players = args[0]
-            self.field_size = int(args[1])
-        else:
-            self.players = ['player1', 'player2']
+        self.field_size = field
+        self.players = [name1, name2]
         self.remembered_alphabit_letter = None
         self.current_word = []
         self.game_status = STATUSES[0]
         self.current_player = 0
         self.p_counts = [0, 0]
-        self.p_words = {0: [], 1:[]}
+        self.p_words = {0: [], 1: []}
 
         self.field = Field(self.generate_word(), self.field_size)
         self.setGeometry(100, 100, 900, 700)
@@ -182,7 +167,6 @@ class MainWindow(QWidget):
 
         self.word_description = QPlainTextEdit(self)
         self.word_description.setReadOnly(True)
-        self.word_description.setMaximumSize(500, 250)
 
         self.counts = QLabel(self)
         self.counts.setText(str(self.p_counts[0]) + ' : ' + str(self.p_counts[1]))
@@ -199,8 +183,7 @@ class MainWindow(QWidget):
         self.guide_label.setFont(font)
         self.now_move = QLabel(self)
         self.now_move.setText('Сейчас ход: ' + self.players[self.current_player])
-        font3 = QtGui.QFont()
-        font3.setFamily('LuzSans-Book')
+        font3 = font2
         font3.setPointSize(20)
         self.now_move.setFont(font3)
 
@@ -232,7 +215,7 @@ class MainWindow(QWidget):
         self.upper_hb = QHBoxLayout(self)
         self.table_vb = QVBoxLayout(self)
         self.btn_vb = QVBoxLayout(self)
-        self.btn_vb.setGeometry(QRect(0, 0, 0 ,0))
+        self.btn_vb.setGeometry(QRect(0, 0, 0, 0))
         self.game_field_vb = QVBoxLayout(self)
         self.count_hb = QHBoxLayout(self)
         self.count_hb.addWidget(self.counts)
@@ -274,9 +257,9 @@ class MainWindow(QWidget):
         a.grid.setSpacing(0)
         a.setLayout(a.grid)
         for x in range(0, 3):
-            for y in range(0, 13):
+            for y in range(0, 11):
                 new = QPushButton(self)
-                new.setText(ALPHABIT[x * 10 + y])
+                new.setText(ALPHABIT[x * 11 + y])
                 new.setMinimumSize(0, 50)
                 font = QtGui.QFont()
                 font.setPointSize(20)
@@ -299,7 +282,7 @@ class MainWindow(QWidget):
         self.guide_label.setText(self.game_status)
         if self.game_status == STATUSES[0] or self.game_status == STATUSES[1]:
             self.add_word_btn.hide()
-        if self.game_status == STATUSES[1] :
+        if self.game_status == STATUSES[1]:
             self.delete_letter_btn.setEnabled(True)
             if self.current_word:
                 self.add_word_btn.show()
@@ -405,7 +388,7 @@ class Begining_Window(QWidget):
         self.setGeometry(250, 250, 600, 480)
 
         m_f = QtGui.QFont()
-        m_f.setFamily('Candara')
+        m_f.setFamily('Tw Cen MT')
         m_f.setPointSize(12)
         self.setFont(m_f)
 
@@ -441,7 +424,6 @@ class Begining_Window(QWidget):
         self.rules.setGeometry(480, 20, 100, 30)
         self.rules.setText('Правила')
         self.main_label.setGeometry(150, 40, 361, 161)
-        self.names = ['player1', 'player2']
         self.rules.clicked.connect(self.open_rules)
 
     def open_rules(self):
@@ -450,12 +432,13 @@ class Begining_Window(QWidget):
 
     def open_second_form(self):
         field = self.choice.currentText()
+        names = ['player1', 'player2']
         if self.vvod1.text():
-            self.names[0] = self.vvod1.text()
+            names[0] = self.vvod1.text()
         if self.vvod2.text():
-            self.names[1] = self.vvod2.text()
+            names[1] = self.vvod2.text()
         self.second_form = window
-        window.__init__(self.names, field[0])
+        window.__init__(int(field[0]), *names)
         self.second_form.show()
 
 class Rules(QWidget):
