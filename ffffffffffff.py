@@ -9,7 +9,8 @@ import random
 import sys
 
 ALPHABIT = list('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ')
-STATUSES = {0: 'Выберите букву и вставьте ее \nв свободную клетку.', 1: 'Покажите слово от первой \nдо последней буквы.',
+STATUSES = {0: 'Выберите букву и вставьте ее \nв свободную клетку.',
+            1: 'Покажите слово от первой \nдо последней буквы. Для отмены \nнажмите правой кнопкой мыши.',
             2: 'Конец игры.'}
 PLAYERS = ['player1', 'player2']
 
@@ -89,12 +90,21 @@ class Cell_class(QWidget):
         if (e.button() == Qt.LeftButton) and window.game_status == STATUSES[0]:
             if not self.is_letter and window.remembered_alphabit_letter and window.field.check_heighbor_cells(self):
                 self.set_letter(window.remembered_alphabit_letter)
-                window.field.last_letter = (self.x, self.y)
+                window.field.last_letter = self
                 self.update()
                 window.game_status = STATUSES[1]
                 window.set_guide()
-        elif (e.button() == Qt.LeftButton) and window.game_status == STATUSES[1]:
-            self.highlighting()
+        elif window.game_status == STATUSES[1]:
+            if (e.button() == Qt.LeftButton):
+                self.highlighting()
+            if (e.button() == Qt.RightButton):
+                if self.is_filled and self == window.current_word[len(window.current_word) - 1]:
+                    window.current_word = window.current_word[:len(window.current_word) - 1]
+                    self.is_filled = False
+                    self.update()
+                if not window.current_word and self == window.field.last_letter:
+                    window.delete_letter()
+
         window.set_guide()
 
 
@@ -186,7 +196,6 @@ class MainWindow(QWidget):
         font3 = font2
         font3.setPointSize(20)
         self.now_move.setFont(font3)
-
 
         self.delete_letter_btn = QPushButton(self)
         self.delete_letter_btn.setText('Удалить букву')
@@ -292,7 +301,7 @@ class MainWindow(QWidget):
     def make_a_move(self):
         if self.game_status == STATUSES[1]:
             word = ''.join(j.letter for j in self.current_word)
-            if self.check_word(word) and self.field.cells_objects[self.field.last_letter[0]][self.field.last_letter[1]] in self.current_word:
+            if self.check_word(word) and self.field.last_letter in self.current_word:
                 self.p_counts[self.current_player] += len(word)
                 self.p_words[self.current_player].append(word)
                 self.set_description(word.lower())
@@ -306,18 +315,19 @@ class MainWindow(QWidget):
     def check_word(self, word):
         global cur
         result = cur.execute("""SELECT * FROM words
-                    WHERE word = ?""",(word,)).fetchone()
+                    WHERE word = ?""", (word,)).fetchone()
         global cur2
         result_2 = cur2.execute("""SELECT * FROM ozhigov
-                    WHERE word = ?""",(word.lower(),)).fetchone()
-        if (result or result_2) and word not in self.p_words[0] and word not in self.p_words[1] and word != self.first_word:
+                    WHERE word = ?""", (word.lower(),)).fetchone()
+        if (result or result_2) and word not in self.p_words[0] and word not in self.p_words[
+            1] and word != self.first_word:
             return True
         return False
 
     def update_table(self):
         self.table.setRowCount(len(self.p_words[0]))
-        self.table.setItem(len(self.p_words[0]) - 1, self.current_player, QTableWidgetItem(self.p_words[self.current_player][len(self.p_words[0]) - 1]))
-
+        self.table.setItem(len(self.p_words[0]) - 1, self.current_player,
+                           QTableWidgetItem(self.p_words[self.current_player][len(self.p_words[0]) - 1]))
 
     def player_change(self):
         if not self.current_word:
@@ -338,7 +348,7 @@ class MainWindow(QWidget):
         self.set_guide()
 
     def delete_letter(self):
-        self.field.cells_objects[self.field.last_letter[0]][self.field.last_letter[1]].reset()
+        self.field.last_letter.reset()
         self.game_status = STATUSES[0]
         self.delete_word()
         self.set_guide()
@@ -357,7 +367,8 @@ class MainWindow(QWidget):
         self.player_change()
 
     def game_over(self):
-        if all(z.is_letter for z in [self.field.orig_cells_objects[x][y] for x in range(self.field_size) for y in range(self.field_size)]):
+        if all(z.is_letter for z in
+               [self.field.orig_cells_objects[x][y] for x in range(self.field_size) for y in range(self.field_size)]):
             if self.p_counts[0] == self.p_counts[1]:
                 self.now_move.setText('Ничья.')
             else:
@@ -441,6 +452,7 @@ class Begining_Window(QWidget):
         window.__init__(int(field[0]), *names)
         self.second_form.show()
 
+
 class Rules(QWidget):
     def __init__(self):
         super().__init__()
@@ -450,7 +462,6 @@ class Rules(QWidget):
         text.setGeometry(10, 10, 500, 380)
         text.setPlainText(f)
         text.setReadOnly(True)
-
 
 
 if __name__ == '__main__':
