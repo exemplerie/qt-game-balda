@@ -51,7 +51,7 @@ class Cell_class(QWidget):                  # класс для клеток с 
             color = colors[window.current_player]
             outer, inner = Qt.black, color
         else:
-            outer, inner = Qt.black, QColor('#FAF6EA')
+            outer, inner = Qt.black, QColor('#D7D7D7')
 
         qp.fillRect(r, QBrush(inner))
         pen = QPen(outer)
@@ -120,7 +120,7 @@ class Field(QWidget):               # класс игрового поля
         self.last_letter = None
         self.init_map()
         self.cells_objects = copy.copy(self.orig_cells_objects)         # промежуточный массив клеток
-        self.setMaximumSize(500, 500)
+        self.setMaximumSize(520, 520)
 
     def init_map(self):                         # создание поля
         for x in range(0, self.f_size):
@@ -247,8 +247,6 @@ class MainWindow(QWidget):
         self.table_vb.addWidget(self.word_description)
         self.main_vb.setSpacing(50)
 
-        self.setLayout(self.main_vb)
-
         self.init_alphabit()            # создание алфавита
         self.set_guide()                # ставим надпись-руководство
         self.setFont(font)
@@ -294,14 +292,20 @@ class MainWindow(QWidget):
     def make_a_move(self):          # проверяет и делает ход
         if self.game_status == STATUSES[1]:
             word = ''.join(j.letter for j in self.current_word)         # введенное слово
-            if self.check_word(word) and self.field.last_letter in self.current_word:       # если прошло проверку
+            if self.check_word(word):       # если прошло проверку
                 self.p_counts[self.current_player] += len(word)         # обновление счета
                 self.p_words[self.current_player].append(word)          # списка слов
                 self.set_description(word.lower())                  # значение последнего слова
                 self.player_change()                # меняем игрока
                 self.game_over()                # проверка на окончание игры
-            else:
-                self.guide_label.setText('Подумайте еще раз!')          # слово не прошло проверку
+            else:           # слово не прошло проверку
+                if self.field.last_letter not in self.current_word:
+                    text = 'Слово должно содержать новую букву!'
+                elif word in self.p_words[0] or word in self.p_words[1] or word == self.first_word:
+                    text = 'Такое слово уже было!\nПридумайте новое.'
+                else:
+                    text = 'Извините, данного слова нет в \nсловаре. Попробуйте ввести другое.'
+                self.guide_label.setText(text)
                 self.guide_label.update()
                 self.delete_word()
 
@@ -313,7 +317,7 @@ class MainWindow(QWidget):
         result_2 = cur2.execute("""SELECT * FROM ozhigov
                     WHERE word = ?""", (word.lower(),)).fetchone()      # поиск слова в толковом словаре
         if (result or result_2) and word not in self.p_words[0] and word not in self.p_words[
-            1] and word != self.first_word:         # нет ли слова в уже введенных
+            1] and word != self.first_word and self.field.last_letter in self.current_word:     # нет ли слова в уже введенных и есть ли в нем последняя буква
             return True
         return False
 
@@ -363,10 +367,17 @@ class MainWindow(QWidget):
         if all(z.is_letter for z in
                [self.field.orig_cells_objects[x][y] for x in range(self.field_size) for y in range(self.field_size)]):
             if self.p_counts[0] == self.p_counts[1]:
-                self.now_move.setText('Ничья.')
+                text = 'Ничья!'
             else:
                 winner = self.p_counts.index(max(self.p_counts))
-                self.now_move.setText('Поздравляем, ' + self.players[winner] + '!\nВы победили!')
+                text = 'Поздравляем, ' + self.players[winner] + '!\nВы победили!'
+            self.now_move.setText('')
+            self.guide_label.setText('')
+            self.the_best_word = max(self.p_words[0] + self.p_words[1], key=len)
+            text += '\nЛучшее слово за игру: ' + self.the_best_word
+            nt = Win_window(text)
+            self.btn_vb.insertWidget(1, nt)
+            self.btn_vb.removeWidget(self.guide_label)
             self.delete_word_btn.hide()
             self.delete_letter_btn.hide()
             self.add_word_btn.hide()
@@ -384,6 +395,27 @@ class MainWindow(QWidget):
             self.word_description.setPlainText(des)
         else:
             self.word_description.setPlainText('Извините, данное слово отсутсвует в словаре.')
+
+class Win_window(QWidget):
+    def __init__(self, text):
+        super().__init__()
+        self.text = text
+        self.setMinimumSize(300, 300)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        print('e')
+        r = event.rect()
+        qp.fillRect(r, QBrush(QColor('#EA7E5D')))
+        pen = QPen(Qt.black)
+        pen.setWidth(1)
+        qp.setPen(pen)
+        qp.drawRect(r)
+        qp.setPen(Qt.black)
+        qp.setFont(QFont("Arial", 15))
+        qp.drawText(r, Qt.AlignCenter, self.text)
+        qp.end()
 
 
 class Begining_Window(QWidget):
