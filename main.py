@@ -413,7 +413,7 @@ class MainWindow(QWidget):
 class Win_window(QWidget):  # поздравительное окошко
     def __init__(self, text):
         super(Win_window, self).__init__()
-        self.pixmap = QPixmap('image.jpg')
+        self.pixmap = QPixmap('data/image.jpg')
         self.setMinimumSize(350, 350)
         self.image = QLabel(self)
         self.image.setGeometry(0, 60, 300, 300)
@@ -500,7 +500,7 @@ class Rules(QWidget):  # окошко с правилами игры
     def __init__(self):
         super().__init__()
         self.setGeometry(250, 250, 520, 400)
-        f = open('rules.txt').read()
+        f = open('data/rules.txt').read()
         text = QPlainTextEdit(self)
         text.setGeometry(10, 10, 500, 380)
         text.setPlainText(f)
@@ -508,8 +508,8 @@ class Rules(QWidget):  # окошко с правилами игры
 
 
 if __name__ == '__main__':
-    con = sqlite3.connect("dic3.db")
-    con2 = sqlite3.connect("ozhigov.db")
+    con = sqlite3.connect("data/dic3.db")
+    con2 = sqlite3.connect("data/ozhigov.db")
     cur = con.cursor()
     cur2 = con2.cursor()
     app = QApplication(sys.argv)
