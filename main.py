@@ -14,9 +14,9 @@ STATUSES = {0: 'Выберите букву и вставьте ее \nв сво
             2: 'Конец игры.'}
 
 
-class Cell_class(QWidget):  # класс для клеток с буквами
+class Cell(QWidget):  # класс для клеток с буквами
     def __init__(self, x, y, f):
-        super(Cell_class, self).__init__()
+        super(Cell, self).__init__()
 
         self.setFixedSize(QSize(500 // f, 500 // f))
 
@@ -126,7 +126,7 @@ class Field(QWidget):  # класс игрового поля
     def init_map(self):  # создание поля
         for x in range(0, self.f_size):
             for y in range(0, self.f_size):
-                a = Cell_class(x, y, self.f_size)
+                a = Cell(x, y, self.f_size)
                 if x == self.f_size // 2:
                     a.set_letter(self.word[y])
                 self.grid.addWidget(a, x, y)
@@ -398,7 +398,7 @@ class MainWindow(QWidget):
             self.guide_label.setText('\tКонец игры.')
             self.the_best_word = max(self.p_words[0] + self.p_words[1], key=len)  # определение самого длинного слова
             text += '\nЛучшее слово за игру:\n' + self.the_best_word
-            nt = Win_window(text)  # поздравительное окошко
+            nt = Congratulations(text)  # поздравительное окошко
             self.btn_vb.insertWidget(0, nt)
             self.btn_vb.removeWidget(self.now_move)
             self.delete_word_btn.hide()  # убираем ненужные кнопки
@@ -410,9 +410,9 @@ class MainWindow(QWidget):
             self.game_status = STATUSES[2]
 
 
-class Win_window(QWidget):  # поздравительное окошко
+class Congratulations(QWidget):  # поздравительное окошко
     def __init__(self, text):
-        super(Win_window, self).__init__()
+        super(Congratulations, self).__init__()
         self.pixmap = QPixmap('data/image.jpg')
         self.setMinimumSize(350, 350)
         self.image = QLabel(self)
@@ -425,7 +425,7 @@ class Win_window(QWidget):  # поздравительное окошко
         self.label.move(10, 100)
 
 
-class Begining_Window(QWidget):  # начальное окно
+class BeginingWindow(QWidget):  # начальное окно
     def __init__(self):
         super().__init__()
         self.setGeometry(250, 250, 600, 480)
@@ -515,6 +515,6 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     window = MainWindow()
-    window2 = Begining_Window()
+    window2 = BeginingWindow()
     window2.show()
     sys.exit(app.exec())
